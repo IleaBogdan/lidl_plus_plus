@@ -15,13 +15,21 @@ def hello_world():
 def submitProduct():
     try:
         items = []
+        map_id=0
         for key, value in request.form.items():
-            for v in value.split(","):
-                items.append(v.strip())
+            if key == 'product':
+                # Split by comma and strip whitespace
+                for v in value.split(","):
+                    item = v.strip()
+                    if item:  # Only add non-empty items
+                        items.append(item)
+            elif key == 'mapId':
+                map_id = value.strip()
 
+        print("map id = "+str(map_id))
         # ai_bullshit(items)
         print(items)
-        img=cv2.imread("empty_map.png")
+        img=cv2.imread("shelves.png")
         png_img=cv2.imencode(".png",img)
         map_base64=base64.b64encode(png_img[1]).decode('utf-8')
 
