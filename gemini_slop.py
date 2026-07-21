@@ -44,7 +44,7 @@ class StoreOptimizationPipeline:
             print(f"Error loading customer demands: {e}")
             return False
 
-    def load_item_coordinates(self, coordinate_mapping: dict) -> void:
+    def load_item_coordinates(self, coordinate_mapping: dict):
         """
         Injects the missing link: where each item lives on the bin_mask grid.
         This can be passed from the UI or loaded from a separate JSON file.
