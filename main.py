@@ -22,8 +22,8 @@ def submitProduct():
         # ai_bullshit(items)
         print(items)
         img=cv2.imread("empty_map.png")
-        jpg_img=cv2.imencode(".png  ",img)
-        map_base64=base64.b64encode(jpg_img[1]).decode('utf-8')
+        png_img=cv2.imencode(".png",img)
+        map_base64=base64.b64encode(png_img[1]).decode('utf-8')
 
         # Success response with 200
         return jsonify({

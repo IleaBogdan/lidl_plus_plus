@@ -22,15 +22,15 @@ function App() {
       if (data && data.map_url) {
         // The backend returns raw base64, so we need to add the data URI prefix
         // so the browser knows it's an image and doesn't try to fetch it as a URL
-        const imageSrc = data.map_url.startsWith('data:image') 
-          ? data.map_url 
+        const imageSrc = data.map_url.startsWith('data:image')
+          ? data.map_url
           : `data:image/png;base64,${data.map_url}`;
         setMapUrl(imageSrc);
       }
     } catch (error) {
       console.error("Failed to submit product", error);
     }
-    
+
     setLoading(false);
     setProduct('');
   };
@@ -38,8 +38,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Store Explorer</h1>
-        <p>Find products across the store map</p>
+        <h1>Lidl++</h1>
       </header>
 
       <main className="main-content">
@@ -60,11 +59,11 @@ function App() {
 
         <div className="map-container">
           {mapUrl ? (
-             <img 
-               src={mapUrl} 
-               alt="Store map with product location" 
-               style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }} 
-             />
+            <img
+              src={mapUrl}
+              alt="Store map with product location"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }}
+            />
           ) : (
             <div className="map-placeholder">
               <div className="pulse-ring"></div>
