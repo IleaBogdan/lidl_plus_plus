@@ -4,10 +4,11 @@ import { fetchMapData, submitProduct } from './api';
 function App() {
   const [product, setProduct] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mapUrl, setMapUrl] = useState(null);
 
   useEffect(() => {
-    // Load map from API call
-    fetchMapData();
+    // Optionally load an initial map from API call if needed later
+    // fetchMapData();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -15,7 +16,21 @@ function App() {
     if (!product.trim()) return;
 
     setLoading(true);
-    await submitProduct(product);
+    try {
+      const data = await submitProduct(product);
+      // Expecting the backend to return the map image URL or base64 data in `map_url`
+      if (data && data.map_url) {
+        // The backend returns raw base64, so we need to add the data URI prefix
+        // so the browser knows it's an image and doesn't try to fetch it as a URL
+        const imageSrc = data.map_url.startsWith('data:image') 
+          ? data.map_url 
+          : `data:image/png;base64,${data.map_url}`;
+        setMapUrl(imageSrc);
+      }
+    } catch (error) {
+      console.error("Failed to submit product", error);
+    }
+    
     setLoading(false);
     setProduct('');
   };
@@ -44,10 +59,18 @@ function App() {
         </form>
 
         <div className="map-container">
-          <div className="map-placeholder">
-            <div className="pulse-ring"></div>
-            <p>Interactive Map Loading...</p>
-          </div>
+          {mapUrl ? (
+             <img 
+               src={mapUrl} 
+               alt="Store map with product location" 
+               style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }} 
+             />
+          ) : (
+            <div className="map-placeholder">
+              <div className="pulse-ring"></div>
+              <p>Type a product to load the map...</p>
+            </div>
+          )}
         </div>
       </main>
     </div>
