@@ -13,7 +13,7 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!product.trim()) return;
-    
+
     setLoading(true);
     await submitProduct(product);
     setLoading(false);
@@ -30,9 +30,9 @@ function App() {
       <main className="main-content">
         <form className="search-form" onSubmit={handleSubmit}>
           <div className="input-group">
-            <input 
-              type="text" 
-              placeholder="Type a product name..." 
+            <input
+              type="text"
+              placeholder="Type a product name..."
               value={product}
               onChange={(e) => setProduct(e.target.value)}
               className="search-input"
