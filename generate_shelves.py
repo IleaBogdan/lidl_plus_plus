@@ -1,5 +1,6 @@
 #!/bin/python3
 from PIL import Image, ImageDraw
+import numpy as np
 
 NUM_SHELVES = 3
 IMAGE_WIDTH = 800
@@ -108,3 +109,4 @@ if __name__ == "__main__":
     print(f"\nBinary matrix (CELL_SIZE={CELL_SIZE}px):")
     print(f"Rows={len(matrix)}, Cols={len(matrix[0])}")
     print_matrix(matrix)
+    np.save('bin_mask.npy', matrix)
