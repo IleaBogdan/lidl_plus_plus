@@ -291,6 +291,65 @@ body {
   transform: translateX(-4px);
 }
 
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.3rem;
+  backdrop-filter: blur(12px);
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  line-height: 1;
+}
+
+.zoom-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.zoom-btn.zoom-reset {
+  font-size: 1rem;
+}
+
+.zoom-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  min-width: 40px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.map-scroll {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.map-image {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+}
+
 .aisles-container {
   width: 100%;
   display: flex;

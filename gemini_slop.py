@@ -67,7 +67,7 @@ class StoreLayoutOptimizer:
 
         return (max_x - min_x + max_y - min_y).mean()
 
-    def optimize_for_subset(self, subset_items: list, epochs: int = 150, lr: float = 0.1):
+    def optimize_for_subset(self, subset_items: list, epochs: int = 500, lr: float = 0.1):
         """
         Dynamically builds tensors and trains layout exclusively for the submitted items.
         """
@@ -99,13 +99,14 @@ class StoreLayoutOptimizer:
                 
         self.B = torch.tensor(B_np)
 
-        # 3. Assign physical shelves (Grab exactly N shelf slots for N subset items)
-        active_shelves = np.array(self.shelf_coords[:num_items]) 
-        self.shelf_y = torch.tensor(active_shelves[:, 0], dtype=torch.float32)
-        self.shelf_x = torch.tensor(active_shelves[:, 1], dtype=torch.float32)
+        # 3. Use all shelf slots so the optimizer can pick the best positions
+        all_shelves = np.array(self.shelf_coords)
+        self.shelf_y = torch.tensor(all_shelves[:, 0], dtype=torch.float32)
+        self.shelf_x = torch.tensor(all_shelves[:, 1], dtype=torch.float32)
         
         # 4. Initialize learnable parameters for THIS specific subset
-        self.W = nn.Parameter(torch.randn(num_items, num_items, requires_grad=True))
+        num_shelves = len(self.shelf_coords)
+        self.W = nn.Parameter(torch.randn(num_items, num_shelves, requires_grad=True))
 
         # 5. Fast Training Loop
         optimizer = torch.optim.Adam([self.W], lr=lr)
@@ -120,7 +121,7 @@ class StoreLayoutOptimizer:
         with torch.no_grad():
             M_soft = self._sinkhorn(self.W).cpu().numpy()
             
-        item_indices, shelf_indices = linear_sum_assignment(M_soft)
+        item_indices, shelf_indices = linear_sum_assignment(-M_soft)
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
     def _load_product_image(self, item: str, size: int) -> Image.Image:

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { submitProducts } from './api';
 import mapsIds from './maps_ids.json';
 import { PRODUCTS } from './products';
@@ -11,6 +11,28 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mapBase64, setMapBase64] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+
+  const zoomIn = () => setZoom(z => Math.min(z + 0.25, 5));
+  const zoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
+
+  const handleKeyDown = useCallback((e) => {
+    const step = 40;
+    switch (e.key) {
+      case 'w': case 'W': case 'ArrowUp':    setPanY(p => p + step); break;
+      case 's': case 'S': case 'ArrowDown':  setPanY(p => p - step); break;
+      case 'a': case 'A': case 'ArrowLeft':  setPanX(p => p + step); break;
+      case 'd': case 'D': case 'ArrowRight': setPanX(p => p - step); break;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (screen !== 'result') return;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [screen, handleKeyDown]);
 
   const toggleProduct = (name) => {
     setSelectedProducts((prev) =>
@@ -40,6 +62,20 @@ function App() {
   };
 
   if (screen === 'result') {
+    const handleWheel = (e) => {
+      e.preventDefault();
+      setZoom(z => {
+        const delta = e.deltaY > 0 ? -0.25 : 0.25;
+        return Math.min(Math.max(z + delta, 0.25), 5);
+      });
+    };
+
+    const resetView = () => {
+      setZoom(1);
+      setPanX(0);
+      setPanY(0);
+    };
+
     return (
       <div className="app-container">
         <header className="header">
@@ -48,17 +84,28 @@ function App() {
         </header>
 
         <main className="main-content">
-          <button className="back-btn" onClick={() => setScreen('select')}>
-            &larr; Back
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%' }}>
+            <button className="back-btn" onClick={() => setScreen('select')}>
+              &larr; Back
+            </button>
+            <div className="zoom-controls">
+              <button className="zoom-btn" onClick={zoomOut} title="Zoom out">−</button>
+              <span className="zoom-label">{Math.round(zoom * 100)}%</span>
+              <button className="zoom-btn" onClick={zoomIn} title="Zoom in">+</button>
+              <button className="zoom-btn zoom-reset" onClick={resetView} title="Reset view">⟲</button>
+            </div>
+          </div>
 
-          <div className="map-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+          <div className="map-container" onWheel={handleWheel}>
             {mapBase64 ? (
-              <img 
-                src={`data:image/png;base64,${mapBase64}`} 
-                alt="Store Map" 
-                style={{ maxWidth: '100%', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} 
-              />
+              <div className="map-scroll">
+                <img
+                  src={`data:image/png;base64,${mapBase64}`}
+                  alt="Store Map"
+                  className="map-image"
+                  style={{ transform: `translate(${panX}px, ${panY}px) scale(${zoom})` }}
+                />
+              </div>
             ) : (
               <p>No map generated</p>
             )}
