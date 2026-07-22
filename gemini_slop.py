@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import random
 from collections import Counter
 
 class StoreOptimizationPipeline:
@@ -8,6 +9,23 @@ class StoreOptimizationPipeline:
         self.store_layout = None
         self.customer_demands = []
         self.item_coordinates = {}  # E.g., {"Bananas": (10, 5), "Whole Milk": (2, 8)}
+        # Static store layout: 3 aisles, all sharing the same fixed capacity
+        # (0-16 products), generated once for this run.
+        aisle_capacity = random.randint(0, 16)
+        self.aisle_lengths = [aisle_capacity] * 3
+
+    def arrange_products(self, items: list) -> list:
+        """
+        Places submitted products into the store's static aisle layout,
+        filling each aisle up to its capacity before moving to the next one.
+        Items beyond the total aisle capacity are dropped.
+        """
+        arrangement = []
+        index = 0
+        for capacity in self.aisle_lengths:
+            arrangement.append(items[index:index + capacity])
+            index += capacity
+        return arrangement
 
     def load_store_layout(self, filepath_mask: str) -> bool:
         """

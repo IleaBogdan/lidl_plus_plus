@@ -1,8 +1,6 @@
 #!/bin/python3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import cv2
-import base64
 import gemini_slop
 
 app = Flask(__name__)
@@ -32,16 +30,14 @@ def submitProduct():
         print("map id = "+str(map_id))
 
         print(items)
-        img=cv2.imread("shelves.png")
-        png_img=cv2.imencode(".png",img)
-        map_base64=base64.b64encode(png_img[1]).decode('utf-8')
-        
+        arrangement = pipeline.arrange_products(items)
+
         # Success response with 200
         return jsonify({
             'status': 'success',
             'message': 'Product submitted successfully',
-            'items': items,
-            'map_url': map_base64
+            'aisle_lengths': pipeline.aisle_lengths,
+            'aisles': arrangement
         }), 200
     
     except Exception as e:
