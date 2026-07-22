@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { fetchMapData, submitProduct } from './api';
+import mapsIds from './maps_ids.json';
 
 function App() {
   const [product, setProduct] = useState('');
   const [loading, setLoading] = useState(false);
   const [mapUrl, setMapUrl] = useState(null);
-
+  const [selectedMapId, setSelectedMapId] = useState(mapsIds[0].id);
   useEffect(() => {
     // Optionally load an initial map from API call if needed later
     // fetchMapData();
@@ -17,7 +18,7 @@ function App() {
 
     setLoading(true);
     try {
-      const data = await submitProduct(product);
+      const data = await submitProduct(product, selectedMapId);
       // Expecting the backend to return the map image URL or base64 data in `map_url`
       if (data && data.map_url) {
         // The backend returns raw base64, so we need to add the data URI prefix
@@ -36,7 +37,30 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 10 }}>
+        <select
+          className="search-input"
+          style={{ 
+            width: 'auto', 
+            minWidth: '120px', 
+            cursor: 'pointer', 
+            borderRadius: '999px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
+            backdropFilter: 'blur(12px)',
+            padding: '0.5rem 1rem'
+          }}
+          value={selectedMapId}
+          onChange={(e) => setSelectedMapId(Number(e.target.value))}
+        >
+          {mapsIds.map((map) => (
+            <option key={map.id} value={map.id} style={{ background: 'var(--bg-color)' }}>
+              {map.name}
+            </option>
+          ))}
+        </select>
+      </div>
       <header className="header">
         <h1>Lidl++</h1>
       </header>

@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cv2
 import base64
+import gemini_slop
 
 # --- ADDED: Import and initialize the AI once on startup ---
 from store_pipeline import StoreLayoutOptimizer
@@ -18,6 +19,8 @@ print("AI Ready to serve requests!")
 app = Flask(__name__)
 CORS(app)
 
+pipeline=None
+
 @app.route('/')
 def hello_world():
     return 'Hello World'
@@ -26,9 +29,18 @@ def hello_world():
 def submitProduct():
     try:
         items = []
+        map_id=0
         for key, value in request.form.items():
-            for v in value.split(","):
-                items.append(v.strip())
+            if key == 'product':
+                # Split by comma and strip whitespace
+                for v in value.split(","):
+                    item = v.strip()
+                    if item:  # Only add non-empty items
+                        items.append(item)
+            elif key == 'mapId':
+                map_id = value.strip()
+        
+        print("map id = "+str(map_id))
 
         # --- REPLACED: ai_bullshit(items) ---
         # This draws the map with the customer's items and saves it as "empty_map.png"
@@ -36,10 +48,10 @@ def submitProduct():
         # ------------------------------------
 
         print(items)
-        img=cv2.imread("empty_map.png")
+        img=cv2.imread("shelves.png")
         png_img=cv2.imencode(".png",img)
         map_base64=base64.b64encode(png_img[1]).decode('utf-8')
-
+        
         # Success response with 200
         return jsonify({
             'status': 'success',
@@ -47,8 +59,7 @@ def submitProduct():
             'items': items,
             'map_url': map_base64
         }), 200
-
-        
+    
     except Exception as e:
         # Error response with 500
         return jsonify({

@@ -4,11 +4,12 @@ export const fetchMapData = async () => {
   // Random function that returns nothing
 };
 
-export const submitProduct = async (productName) => {
+export const submitProduct = async (productName, mapId) => {
   try {
     const formData = new FormData();
     // Appending the product as a form field since the backend expects request.form
     formData.append('product', productName);
+    formData.append('mapId', mapId);
 
     const response = await fetch(`http://${url}/submit`, {
       method: 'POST',
