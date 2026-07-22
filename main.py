@@ -40,10 +40,7 @@ def submitProduct():
         
         print("map id = "+str(map_id))
 
-        # --- REPLACED: ai_bullshit(items) ---
-        # This draws the map with the customer's items and saves it as "empty_map.png"
-        ai.generate_and_save_map(items, "empty_map.png")
-        # ------------------------------------
+        ai.generate_and_save_map(items, "empty_map.png", assets_dir="assets")
 
         print(items)
         img=cv2.imread("empty_map.png")
