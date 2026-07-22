@@ -124,13 +124,18 @@ class StoreLayoutOptimizer:
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
     def _load_product_image(self, item: str, size: int) -> Image.Image:
-        name = item.lower().replace(" ", "_").replace("/", "_")
         assets_dir = getattr(self, "assets_dir", "assets")
-        for ext in (".png", ".jpg", ".jpeg"):
-            path = os.path.join(assets_dir, name + ext)
-            if os.path.isfile(path):
-                img = Image.open(path).convert("RGB")
-                return img.resize((size, size), Image.LANCZOS)
+        candidates = [
+            item,
+            item.replace("/", "-"),
+            item.lower().replace(" ", "_").replace("/", "_"),
+        ]
+        for name in candidates:
+            for ext in (".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"):
+                path = os.path.join(assets_dir, name + ext)
+                if os.path.isfile(path):
+                    img = Image.open(path).convert("RGB")
+                    return img.resize((size, size), Image.LANCZOS)
         icon = Image.new("RGB", (size, size), (255, 255, 255))
         draw = ImageDraw.Draw(icon)
         color = (
