@@ -142,3 +142,6 @@ class StoreLayoutOptimizer:
             cv2.putText(img, item, (center[0] - 15, center[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
         cv2.imwrite(output_filename, img)
+
+
+## tstst
