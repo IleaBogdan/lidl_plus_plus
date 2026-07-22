@@ -1,50 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { fetchMapData, submitProduct } from './api';
+import React, { useState } from 'react';
+import { submitProducts } from './api';
 import mapsIds from './maps_ids.json';
+import { PRODUCTS } from './products';
+import { PRODUCT_ICONS } from './productIcons';
 
 function App() {
-  const [product, setProduct] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [mapUrl, setMapUrl] = useState(null);
+  const [screen, setScreen] = useState('select'); // 'select' | 'result'
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedMapId, setSelectedMapId] = useState(mapsIds[0].id);
-  useEffect(() => {
-    // Optionally load an initial map from API call if needed later
-    // fetchMapData();
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [mapBase64, setMapBase64] = useState(null);
+
+  const toggleProduct = (name) => {
+    setSelectedProducts((prev) =>
+      prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name]
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!product.trim()) return;
+    if (selectedProducts.length === 0) return;
 
     setLoading(true);
+    setError(null);
     try {
-      const data = await submitProduct(product, selectedMapId);
-      // Expecting the backend to return the map image URL or base64 data in `map_url`
-      if (data && data.map_url) {
-        // The backend returns raw base64, so we need to add the data URI prefix
-        // so the browser knows it's an image and doesn't try to fetch it as a URL
-        const imageSrc = data.map_url.startsWith('data:image')
-          ? data.map_url
-          : `data:image/png;base64,${data.map_url}`;
-        setMapUrl(imageSrc);
+      const data = await submitProducts(selectedProducts, selectedMapId);
+      if (data.status === 'success') {
+        setMapBase64(data.map_base64);
+        setScreen('result');
+      } else {
+        setError(data.message || 'Submission failed');
       }
-    } catch (error) {
-      console.error("Failed to submit product", error);
+    } catch (err) {
+      console.error('Failed to submit products', err);
+      setError('Failed to reach the backend');
     }
-
     setLoading(false);
-    setProduct('');
   };
+
+  if (screen === 'result') {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <h1>Lidl++</h1>
+          <p>Optimal aisle arrangement</p>
+        </header>
+
+        <main className="main-content">
+          <button className="back-btn" onClick={() => setScreen('select')}>
+            &larr; Back
+          </button>
+
+          <div className="map-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+            {mapBase64 ? (
+              <img 
+                src={`data:image/png;base64,${mapBase64}`} 
+                alt="Store Map" 
+                style={{ maxWidth: '100%', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} 
+              />
+            ) : (
+              <p>No map generated</p>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container" style={{ position: 'relative' }}>
       <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 10 }}>
         <select
           className="search-input"
-          style={{ 
-            width: 'auto', 
-            minWidth: '120px', 
-            cursor: 'pointer', 
+          style={{
+            width: 'auto',
+            minWidth: '120px',
+            cursor: 'pointer',
             borderRadius: '999px',
             background: 'var(--card-bg)',
             border: '1px solid var(--border-color)',
@@ -61,40 +93,41 @@ function App() {
           ))}
         </select>
       </div>
+
       <header className="header">
         <h1>Lidl++</h1>
+        <p>Select the products for this order</p>
       </header>
 
       <main className="main-content">
-        <form className="search-form" onSubmit={handleSubmit}>
-          <div className="input-group">
-            <input
-              type="text"
-              placeholder="Type a product name..."
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-              className="search-input"
-            />
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? 'Submitting...' : 'Find Product'}
-            </button>
+        <form className="product-form" onSubmit={handleSubmit}>
+          <div className="product-grid">
+              {PRODUCTS.map((name) => (
+              <button
+                type="button"
+                key={name}
+                className={`product-chip${selectedProducts.includes(name) ? ' selected' : ''}`}
+                onClick={() => toggleProduct(name)}
+                title={name}
+              >
+                <span className="product-icon">{PRODUCT_ICONS[name]}</span>
+                <span className="product-label">{name}</span>
+              </button>
+            ))}
           </div>
-        </form>
 
-        <div className="map-container">
-          {mapUrl ? (
-            <img
-              src={mapUrl}
-              alt="Store map with product location"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }}
-            />
-          ) : (
-            <div className="map-placeholder">
-              <div className="pulse-ring"></div>
-              <p>Type a product to load the map...</p>
-            </div>
-          )}
-        </div>
+          {error && <p className="error-text">{error}</p>}
+
+          <button
+            type="submit"
+            className="submit-btn"
+            disabled={loading || selectedProducts.length === 0}
+          >
+            {loading
+              ? 'Submitting...'
+              : `Submit ${selectedProducts.length} product${selectedProducts.length === 1 ? '' : 's'}`}
+          </button>
+        </form>
       </main>
     </div>
   );

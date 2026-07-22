@@ -211,3 +211,142 @@ body {
   .submit-btn { padding: 1rem; border-radius: 8px; }
   .map-container { height: 50vh; }
 }
+
+.product-form {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+.product-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+}
+
+.product-chip {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.product-chip:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.product-chip.selected {
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  border-color: transparent;
+  color: #fff;
+}
+
+.product-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.product-label {
+  pointer-events: none;
+}
+
+.error-text {
+  color: #f87171;
+}
+
+.back-btn {
+  align-self: flex-start;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.back-btn:hover {
+  border-color: var(--accent);
+  transform: translateX(-4px);
+}
+
+.aisles-container {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  backdrop-filter: blur(12px);
+  min-height: 400px;
+  animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+.aisle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aisle-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.aisle-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aisle-block {
+  width: 90px;
+  height: 90px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.aisle-block.empty {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .aisle-block { width: 70px; height: 70px; font-size: 0.6rem; }
+}
