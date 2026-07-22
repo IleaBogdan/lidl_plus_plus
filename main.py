@@ -1,6 +1,7 @@
 #!/bin/python3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import gemini_slop
 import cv2
 import base64
 
@@ -47,8 +48,7 @@ def submitProduct():
         return jsonify({
             'status': 'success',
             'message': 'Product submitted successfully',
-            'items': items,
-            'map_url': map_base64
+            'map_base64': map_base64
         }), 200
 
     except Exception as e:
