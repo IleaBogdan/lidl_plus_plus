@@ -1,8 +1,6 @@
 #!/bin/python3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import cv2
-import base64
 import gemini_slop
 
 # --- ADDED: Import and initialize the AI once on startup ---
@@ -56,8 +54,8 @@ def submitProduct():
         return jsonify({
             'status': 'success',
             'message': 'Product submitted successfully',
-            'items': items,
-            'map_url': map_base64
+            'aisle_lengths': pipeline.aisle_lengths,
+            'aisles': arrangement
         }), 200
     
     except Exception as e:

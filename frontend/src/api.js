@@ -1,14 +1,10 @@
 const url = "localhost:6969";
 
-export const fetchMapData = async () => {
-  // Random function that returns nothing
-};
-
-export const submitProduct = async (productName, mapId) => {
+export const submitProducts = async (products, mapId) => {
   try {
     const formData = new FormData();
-    // Appending the product as a form field since the backend expects request.form
-    formData.append('product', productName);
+    // Appending the products as a comma-separated form field since the backend expects request.form
+    formData.append('product', products.join(','));
     formData.append('mapId', mapId);
 
     const response = await fetch(`http://${url}/submit`, {
@@ -21,10 +17,10 @@ export const submitProduct = async (productName, mapId) => {
     }
 
     const data = await response.json();
-    console.log('Product submitted successfully:', data);
+    console.log('Products submitted successfully:', data);
     return data;
   } catch (error) {
-    console.error('Error submitting product:', error);
+    console.error('Error submitting products:', error);
     throw error;
   }
 };
