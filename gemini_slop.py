@@ -65,7 +65,7 @@ class StoreLayoutOptimizer:
             Z = Z - torch.logsumexp(Z, dim=-2, keepdim=True)
         return torch.exp(Z)
 
-    def train(self, epochs: int = 50, lr: float = 0.1):
+    def train(self, epochs: int = 10, lr: float = 0.1):
         """Trains the model to find the optimal layout."""
         optimizer = torch.optim.Adam([self.W], lr=lr)
         for _ in range(epochs):
