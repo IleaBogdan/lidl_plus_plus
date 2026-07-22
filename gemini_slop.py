@@ -82,6 +82,23 @@ class StoreLayoutOptimizer:
         item_indices, shelf_indices = linear_sum_assignment(-M_soft)
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
+    def _item_icon(self, item: str, size: int) -> np.ndarray:
+        icon = np.ones((size, size, 3), dtype=np.uint8) * 255
+        color = (
+            (hash(item) & 0xFF),
+            ((hash(item) >> 8) & 0xFF),
+            ((hash(item) >> 16) & 0xFF),
+        )
+        cv2.circle(icon, (size // 2, size // 2), size // 2 - 2, color, -1)
+        cv2.circle(icon, (size // 2, size // 2), size // 2 - 2, (0, 0, 0), 1)
+        letter = item[0].upper()
+        font_scale = 0.4
+        (tw, th), _ = cv2.getTextSize(letter, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+        tx = (size - tw) // 2
+        ty = (size + th) // 2
+        cv2.putText(icon, letter, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 1)
+        return icon
+
     def generate_and_save_map(self, basket_items: list, output_filename: str = "empty_map.png"):
         """Draws the store, highlights the requested items, and saves it to disk."""
         if not self.cached_layout:
@@ -99,14 +116,15 @@ class StoreLayoutOptimizer:
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (200, 200, 200), -1)
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (150, 150, 150), 1)
 
-        # Highlight requested items
+        # Overlay an icon for each requested item
+        icon_size = cell_size - 4
         for item in basket_items:
             if item in self.cached_layout:
                 y, x = self.cached_layout[item]
-                # Black filled square covering the shelf cell
-                cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (0, 0, 0), -1)
-                # White item name centered in the cell
-                cv2.putText(img, item, (x*cell_size + 2, y*cell_size + cell_size - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+                icon = self._item_icon(item, icon_size)
+                ox = x * cell_size + 2
+                oy = y * cell_size + 2
+                img[oy:oy + icon_size, ox:ox + icon_size] = icon
 
         # Save to disk so the Flask backend can read it!
         cv2.imwrite(output_filename, img)
