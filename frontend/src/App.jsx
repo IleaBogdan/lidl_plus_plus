@@ -101,6 +101,24 @@ function App() {
 
       <main className="main-content">
         <form className="product-form" onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', justifyContent: 'center' }}>
+            <button 
+              type="button" 
+              className="action-btn" 
+              style={{ background: 'var(--card-bg)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', flex: 1, maxWidth: '150px' }}
+              onClick={() => setSelectedProducts([...PRODUCTS])}
+            >
+              Select All
+            </button>
+            <button 
+              type="button" 
+              className="action-btn" 
+              style={{ background: 'var(--card-bg)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', flex: 1, maxWidth: '150px' }}
+              onClick={() => setSelectedProducts([])}
+            >
+              Clear All
+            </button>
+          </div>
           <div className="product-grid">
               {PRODUCTS.map((name) => (
               <button

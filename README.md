@@ -17,4 +17,4 @@ Any commit made by `root` is actually Matei, but he made some random git setting
 
 ---
 ## Team: 
-`Ilea Bogdan`, `Stan Razvan`, `Pop Matei`, `Gabi`
+`Ilea Calin Bogdan`, `Stan Calin Razvan`, `Pop Calin Matei`, `Gabriel Calin Cocan`

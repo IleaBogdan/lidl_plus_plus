@@ -1,8 +1,11 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
 from scipy.optimize import linear_sum_assignment
 import cv2
+from typing import Dict, Tuple
+from PIL import Image, ImageDraw, ImageFont
 
 class StoreLayoutOptimizer:
     def __init__(self, tau: float = 0.1, sinkhorn_iters: int = 20):
@@ -117,29 +120,61 @@ class StoreLayoutOptimizer:
         with torch.no_grad():
             M_soft = self._sinkhorn(self.W).cpu().numpy()
             
-        item_indices, shelf_indices = linear_sum_assignment(-M_soft)
+        item_indices, shelf_indices = linear_sum_assignment(M_soft)
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
-    def generate_and_save_map(self, output_filename: str = "empty_map.png"):
-        """Draws the store with the optimized subset layout."""
-        if self.cached_layout is None:
+    def _load_product_image(self, item: str, size: int) -> Image.Image:
+        name = item.lower().replace(" ", "_").replace("/", "_")
+        assets_dir = getattr(self, "assets_dir", "assets")
+        for ext in (".png", ".jpg", ".jpeg"):
+            path = os.path.join(assets_dir, name + ext)
+            if os.path.isfile(path):
+                img = Image.open(path).convert("RGB")
+                return img.resize((size, size), Image.LANCZOS)
+        icon = Image.new("RGB", (size, size), (255, 255, 255))
+        draw = ImageDraw.Draw(icon)
+        color = (
+            (hash(item) & 0xFF),
+            ((hash(item) >> 8) & 0xFF),
+            ((hash(item) >> 16) & 0xFF),
+        )
+        draw.ellipse([2, 2, size - 2, size - 2], fill=color, outline=(0, 0, 0))
+        letter = item[0].upper()
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size - 8)
+        except (IOError, OSError):
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), letter, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        tx = (size - tw) // 2 - bbox[0]
+        ty = (size - th) // 2 - bbox[1]
+        draw.text((tx, ty), letter, font=font, fill=(255, 255, 255))
+        return icon
+
+    def generate_and_save_map(self, basket_items: list, output_filename: str = "empty_map.png", assets_dir: str = "assets"):
+        if not self.cached_layout:
             return
-            
+        self.assets_dir = assets_dir
+
         cell_size = 30
         h, w = self.bin_mask.shape
         img = np.ones((h * cell_size, w * cell_size, 3), dtype=np.uint8) * 255
-        
+
         for y in range(h):
             for x in range(w):
                 if self.bin_mask[y, x] == 1:
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (200, 200, 200), -1)
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (150, 150, 150), 1)
 
-        # Draw the cached items
-        for item, (y, x) in self.cached_layout.items():
-            center = (int((x + 0.5) * cell_size), int((y + 0.5) * cell_size))
-            cv2.circle(img, center, cell_size // 3, (0, 0, 255), -1)
-            cv2.putText(img, item, (center[0] - 15, center[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+        icon_size = cell_size - 4
+        for item in basket_items:
+            if item in self.cached_layout:
+                y, x = self.cached_layout[item]
+                pil_icon = self._load_product_image(item, icon_size)
+                icon_np = np.array(pil_icon)
+                ox = x * cell_size + 2
+                oy = y * cell_size + 2
+                img[oy:oy + icon_size, ox:ox + icon_size] = icon_np
 
         cv2.imwrite(output_filename, img)
 

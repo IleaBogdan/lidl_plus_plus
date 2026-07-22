@@ -12,7 +12,7 @@ from gemini_slop import StoreLayoutOptimizer
 print("Loading historical data and floorplan...")
 ai = StoreLayoutOptimizer()
 ai.load_layout_mask("bin_mask.npy")
-ai.load_customer_demands("data.txt")
+ai.load_customer_demands("train_data/data.txt")
 print("AI ready to train on incoming subsets!")
 # -----------------------------
 
@@ -30,15 +30,9 @@ def submitProduct():
         for key, value in request.form.items():
             for v in value.split(","):
                 items.append(v.strip())
-
-        # --- DYNAMIC TRAINING ---
-        print(f"Dynamically optimizing layout for {len(items)} items...")
-        # Instantly builds matrices for the subset and trains it
-        ai.optimize_for_subset(items, epochs=100) 
-        
-        # Generates map specifically for this requested configuration
-        ai.generate_and_save_map("empty_map.png")
-        # ------------------------
+        items=items[:-1]
+        ai.optimize_for_subset(items, epochs=150)
+        ai.generate_and_save_map(items, "empty_map.png", assets_dir="assets")
 
         print(items)
         img=cv2.imread("empty_map.png")
