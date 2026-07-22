@@ -4,6 +4,60 @@ import torch.nn as nn
 from scipy.optimize import linear_sum_assignment
 import cv2
 from typing import Dict, Tuple
+from PIL import Image, ImageDraw, ImageFont
+
+PRODUCT_ICONS = {
+    "Bananas": "\U0001f34c",
+    "Avocados": "\U0001f951",
+    "Spinach": "\U0001f96c",
+    "Red Bell Peppers": "\U0001fad1",
+    "Yellow Onions": "\U0001f9c5",
+    "Garlic": "\U0001f9c4",
+    "Lemons": "\U0001f34b",
+    "Russet Potatoes": "\U0001f954",
+    "Cherry Tomatoes": "\U0001f345",
+    "Fresh Strawberries": "\U0001f353",
+    "Large White Eggs": "\U0001f95a",
+    "Whole Milk": "\U0001f95b",
+    "Unsalted Butter": "\U0001f9c8",
+    "Plain Greek Yogurt": "\U0001fad9",
+    "Sharp Cheddar Cheese": "\U0001f9c0",
+    "Cream Cheese": "\U0001f9c0",
+    "Sour Cream": "\U0001fad9",
+    "Oat Milk": "\U0001f95b",
+    "Boneless Skinless Chicken Breasts": "\U0001f357",
+    "80/20 Ground Beef": "\U0001f969",
+    "Center-Cut Bacon": "\U0001f953",
+    "Atlantic Salmon Fillets": "\U0001f41f",
+    "Large Shrimp": "\U0001f990",
+    "Oven-Roasted Turkey Breast": "\U0001f983",
+    "Genoa Salami": "\U0001f953",
+    "Long-Grain White Rice": "\U0001f35a",
+    "Spaghetti Pasta": "\U0001f35d",
+    "All-Purpose Flour": "\U0001f33e",
+    "Granulated White Sugar": "\U0001f9c2",
+    "Old-Fashioned Rolled Oats": "\U0001f963",
+    "Peanut Butter": "\U0001f95c",
+    "Strawberry Jam": "\U0001f353",
+    "Extra Virgin Olive Oil": "\U0001fad2",
+    "Balsamic Vinegar": "\U0001f9f4",
+    "Soy Sauce": "\U0001fad8",
+    "Diced Tomatoes": "\U0001fad6",
+    "Canned Black Beans": "\U0001fad6",
+    "Chicken Broth": "\U0001f372",
+    "Tuna in Water": "\U0001f41f",
+    "Sliced White Sandwich Bread": "\U0001f35e",
+    "Flour Tortillas": "\U0001fad3",
+    "Plain Bagels": "\U0001f96f",
+    "Corn Flakes Cereal": "\U0001f963",
+    "Frozen Sweet Corn": "\U0001f33d",
+    "Frozen French Fries": "\U0001f35f",
+    "Vanilla Ice Cream": "\U0001f366",
+    "Cheese Pizza": "\U0001f355",
+    "Salted Potato Chips": "\U0001f368",
+    "Dark Chocolate Bar": "\U0001f36b",
+    "Ground Coffee": "\u2615",
+}
 
 class StoreLayoutOptimizer:
     def __init__(self, tau: float = 0.1, sinkhorn_iters: int = 20):
@@ -131,43 +185,53 @@ class StoreLayoutOptimizer:
         item_indices, shelf_indices = linear_sum_assignment(-M_soft)
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
-    def _item_icon(self, item: str, size: int) -> np.ndarray:
-        icon = np.ones((size, size, 3), dtype=np.uint8) * 255
+    def _item_icon_pil(self, item: str, size: int) -> Image.Image:
+        icon = Image.new("RGB", (size, size), (255, 255, 255))
+        draw = ImageDraw.Draw(icon)
         color = (
             (hash(item) & 0xFF),
             ((hash(item) >> 8) & 0xFF),
             ((hash(item) >> 16) & 0xFF),
         )
-        cv2.circle(icon, (size // 2, size // 2), size // 2 - 2, color, -1)
-        cv2.circle(icon, (size // 2, size // 2), size // 2 - 2, (0, 0, 0), 1)
-        letter = item[0].upper()
-        font_scale = 0.4
-        (tw, th), _ = cv2.getTextSize(letter, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
-        tx = (size - tw) // 2
-        ty = (size + th) // 2
-        cv2.putText(icon, letter, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 1)
+        draw.ellipse([2, 2, size - 2, size - 2], fill=color, outline=(0, 0, 0))
+        emoji = PRODUCT_ICONS.get(item, item[0].upper())
+        font_size = size - 8
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf", font_size)
+        except (IOError, OSError):
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
+            except (IOError, OSError):
+                font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), emoji, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        tx = (size - tw) // 2 - bbox[0]
+        ty = (size - th) // 2 - bbox[1]
+        draw.text((tx, ty), emoji, font=font, fill=(255, 255, 255))
         return icon
 
     def generate_and_save_map(self, basket_items: list, output_filename: str = "empty_map.png"):
-        """Draws the store, highlights the requested items, and saves it to disk."""
         if not self.cached_layout:
             return
-            
+
         cell_size = 30
         h, w = self.bin_mask.shape
         img = np.ones((h * cell_size, w * cell_size, 3), dtype=np.uint8) * 255
-        
+
         for y in range(h):
             for x in range(w):
                 if self.bin_mask[y, x] == 1:
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (200, 200, 200), -1)
                     cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (150, 150, 150), 1)
 
+        icon_size = cell_size - 4
         for item in basket_items:
             if item in self.cached_layout:
                 y, x = self.cached_layout[item]
-                center = (int((x + 0.5) * cell_size), int((y + 0.5) * cell_size))
-                cv2.circle(img, center, cell_size // 3, (0, 0, 255), -1)
-                cv2.putText(img, item, (center[0] - 15, center[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                pil_icon = self._item_icon_pil(item, icon_size)
+                icon_np = np.array(pil_icon)
+                ox = x * cell_size + 2
+                oy = y * cell_size + 2
+                img[oy:oy + icon_size, ox:ox + icon_size] = icon_np
 
         cv2.imwrite(output_filename, img)
