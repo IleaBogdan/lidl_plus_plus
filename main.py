@@ -4,11 +4,11 @@ from flask_cors import CORS
 import gemini_slop
 
 # --- ADDED: Import and initialize the AI once on startup ---
-from store_pipeline import StoreLayoutOptimizer
+from gemini_slop import StoreLayoutOptimizer
 print("Initializing and Training AI...")
 ai = StoreLayoutOptimizer()
 ai.load_layout_mask("bin_mask.npy")
-ai.load_customer_demands("data.txt")
+ai.load_customer_demands("train_data/data.txt")
 ai.prepare_optimization()
 ai.train(epochs=100)  # Learns the optimal store layout
 print("AI Ready to serve requests!")
@@ -46,8 +46,10 @@ def submitProduct():
         # ------------------------------------
 
         print(items)
-        arrangement = pipeline.arrange_products(items)
-
+        img=cv2.imread("empty_map.png")
+        png_img=cv2.imencode(".png",img)
+        map_base64=base64.b64encode(png_img[1]).decode('utf-8')
+        
         # Success response with 200
         return jsonify({
             'status': 'success',

@@ -103,11 +103,10 @@ class StoreLayoutOptimizer:
         for item in basket_items:
             if item in self.cached_layout:
                 y, x = self.cached_layout[item]
-                center = (int((x + 0.5) * cell_size), int((y + 0.5) * cell_size))
-                # Draw red circle for item location
-                cv2.circle(img, center, cell_size // 3, (0, 0, 255), -1)
-                # Put item name above it
-                cv2.putText(img, item, (center[0] - 15, center[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                # Black filled square covering the shelf cell
+                cv2.rectangle(img, (x*cell_size, y*cell_size), ((x+1)*cell_size, (y+1)*cell_size), (0, 0, 0), -1)
+                # White item name centered in the cell
+                cv2.putText(img, item, (x*cell_size + 2, y*cell_size + cell_size - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
 
         # Save to disk so the Flask backend can read it!
         cv2.imwrite(output_filename, img)
