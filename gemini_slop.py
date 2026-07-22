@@ -12,60 +12,35 @@ class StoreLayoutOptimizer:
         self.tau = tau
         self.sinkhorn_iters = sinkhorn_iters
         
+        # Raw Data Storage (Loaded once at startup)
         self.bin_mask = None
+        self.shelf_coords = []
+        self.raw_baskets = []
+        
+        # Dynamic Subset Data (Built per request)
         self.item_to_id = {}
         self.id_to_item = {}
-        self.shelf_coords = []
-        
-        # PyTorch Data
         self.B = None
-        self.shelf_x = None  # Replaces D matrix
-        self.shelf_y = None  # Replaces D matrix
+        self.shelf_x = None
+        self.shelf_y = None
         self.W = None
-        
-        self.is_prepared = False
         self.cached_layout = None
 
     def load_layout_mask(self, mask_filepath: str):
+        """Loads physical store layout into memory."""
         self.bin_mask = np.load(mask_filepath)
         y_indices, x_indices = np.where(self.bin_mask == 1)
         self.shelf_coords = list(zip(y_indices, x_indices))
 
     def load_customer_demands(self, demands_filepath: str):
-        raw_baskets = []
-        unique_items = set()
+        """Loads all historical baskets into memory (List of Lists), no tensors yet."""
+        self.raw_baskets = []
         with open(demands_filepath, 'r', encoding='utf-8') as f:
             for line in f:
                 clean_line = line.strip().strip(',')
                 if clean_line:
                     items = [item.strip() for item in clean_line.split(',')]
-                    raw_baskets.append(items)
-                    unique_items.update(items)
-
-        sorted_items = sorted(list(unique_items))
-        self.item_to_id = {item: idx for idx, item in enumerate(sorted_items)}
-        self.id_to_item = {idx: item for idx, item in enumerate(sorted_items)}
-        
-        num_customers, num_items = len(raw_baskets), len(sorted_items)
-        B_np = np.zeros((num_customers, num_items), dtype=np.float32)
-        
-        for cust_idx, basket in enumerate(raw_baskets):
-            for item in basket:
-                if item in self.item_to_id:
-                    B_np[cust_idx, self.item_to_id[item]] = 1.0
-        
-        self.B = torch.tensor(B_np)
-
-    def prepare_optimization(self):
-        num_items = len(self.item_to_id)
-        active_shelves = np.array(self.shelf_coords[:num_items]) 
-        
-        # Extract distinct X and Y coordinate vectors instead of calculating a massive D matrix
-        self.shelf_y = torch.tensor(active_shelves[:, 0], dtype=torch.float32)
-        self.shelf_x = torch.tensor(active_shelves[:, 1], dtype=torch.float32)
-        
-        self.W = nn.Parameter(torch.randn(num_items, num_items, requires_grad=True))
-        self.is_prepared = True
+                    self.raw_baskets.append(items)
 
     def _sinkhorn(self, W: torch.Tensor) -> torch.Tensor:
         Z = W / self.tau
@@ -75,58 +50,73 @@ class StoreLayoutOptimizer:
         return torch.exp(Z)
 
     def _compute_bbox_loss(self, M: torch.Tensor, bbox_tau: float = 0.5) -> torch.Tensor:
-        """Calculates the soft bounding box span for all customer baskets."""
-        # 1. Map items to their expected physical locations
-        # M is shape (N_items, N_shelves) -> gives expected (X, Y) for each item
-        item_x = torch.matmul(M, self.shelf_x) # Shape: (N_items,)
-        item_y = torch.matmul(M, self.shelf_y) # Shape: (N_items,)
+        item_x = torch.matmul(M, self.shelf_x)
+        item_y = torch.matmul(M, self.shelf_y)
 
-        # Expand shapes for broadcasting to the customer batch
-        item_x_expanded = item_x.unsqueeze(0)  # Shape: (1, N_items)
-        item_y_expanded = item_y.unsqueeze(0)  # Shape: (1, N_items)
+        item_x_expanded = item_x.unsqueeze(0) 
+        item_y_expanded = item_y.unsqueeze(0) 
 
-        # 2. Mask out items that the customer did NOT buy.
-        # We use +/- 10,000 to push unbought items to extreme values so they 
-        # get entirely ignored by the logsumexp (Soft-Max/Soft-Min) functions.
         mask_max = (1.0 - self.B) * -1e4
         mask_min = (1.0 - self.B) * 1e4
 
-        x_for_max = item_x_expanded + mask_max
-        x_for_min = item_x_expanded + mask_min
-        y_for_max = item_y_expanded + mask_max
-        y_for_min = item_y_expanded + mask_min
-
-        # 3. Soft-Max and Soft-Min calculations using logsumexp
-        max_x = bbox_tau * torch.logsumexp(x_for_max / bbox_tau, dim=1)
-        min_x = -bbox_tau * torch.logsumexp(-x_for_min / bbox_tau, dim=1)
+        max_x = bbox_tau * torch.logsumexp((item_x_expanded + mask_max) / bbox_tau, dim=1)
+        min_x = -bbox_tau * torch.logsumexp(-(item_x_expanded + mask_min) / bbox_tau, dim=1)
         
-        max_y = bbox_tau * torch.logsumexp(y_for_max / bbox_tau, dim=1)
-        min_y = -bbox_tau * torch.logsumexp(-y_for_min / bbox_tau, dim=1)
+        max_y = bbox_tau * torch.logsumexp((item_y_expanded + mask_max) / bbox_tau, dim=1)
+        min_y = -bbox_tau * torch.logsumexp(-(item_y_expanded + mask_min) / bbox_tau, dim=1)
 
-        # 4. Calculate span (perimeter footprint) per customer and average it
-        span_x = max_x - min_x
-        span_y = max_y - min_y
+        return (max_x - min_x + max_y - min_y).mean()
+
+    def optimize_for_subset(self, subset_items: list, epochs: int = 150, lr: float = 0.1):
+        """
+        Dynamically builds tensors and trains layout exclusively for the submitted items.
+        """
+        # 1. Setup dictionaries for the subset
+        unique_subset = sorted(list(set(subset_items)))
+        num_items = len(unique_subset)
         
-        return (span_x + span_y).mean()
+        if num_items == 0:
+            self.cached_layout = {}
+            return
+            
+        self.item_to_id = {item: idx for idx, item in enumerate(unique_subset)}
+        self.id_to_item = {idx: item for idx, item in enumerate(unique_subset)}
 
-    def train(self, epochs: int = 150, lr: float = 0.1):
-        """Trains the model to find the optimal layout."""
+        # 2. Build B Matrix: Filter historical baskets to only include subset items
+        subset_baskets = []
+        for basket in self.raw_baskets:
+            # Find intersection of customer's cart and the requested subset
+            intersection = [item for item in basket if item in self.item_to_id]
+            if intersection: # Only keep customers who actually bought at least one subset item
+                subset_baskets.append(intersection)
+                
+        num_customers = max(len(subset_baskets), 1) # Prevent empty matrix crash
+        B_np = np.zeros((num_customers, num_items), dtype=np.float32)
+        
+        for cust_idx, basket in enumerate(subset_baskets):
+            for item in basket:
+                B_np[cust_idx, self.item_to_id[item]] = 1.0
+                
+        self.B = torch.tensor(B_np)
+
+        # 3. Assign physical shelves (Grab exactly N shelf slots for N subset items)
+        active_shelves = np.array(self.shelf_coords[:num_items]) 
+        self.shelf_y = torch.tensor(active_shelves[:, 0], dtype=torch.float32)
+        self.shelf_x = torch.tensor(active_shelves[:, 1], dtype=torch.float32)
+        
+        # 4. Initialize learnable parameters for THIS specific subset
+        self.W = nn.Parameter(torch.randn(num_items, num_items, requires_grad=True))
+
+        # 5. Fast Training Loop
         optimizer = torch.optim.Adam([self.W], lr=lr)
-        
-        for epoch in range(epochs):
+        for _ in range(epochs):
             optimizer.zero_grad()
-            
-            # Forward pass through Sinkhorn to get soft permutations
             M_soft = self._sinkhorn(self.W)
-            
-            # Use the new Bounding Box Loss
             loss = self._compute_bbox_loss(M_soft)
-            
-            # Backpropagation
             loss.backward()
             optimizer.step()
 
-        # Cache layout after training
+        # 6. Cache layout via Hungarian Matching
         with torch.no_grad():
             M_soft = self._sinkhorn(self.W).cpu().numpy()
             
