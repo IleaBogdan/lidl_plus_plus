@@ -120,7 +120,7 @@ class StoreLayoutOptimizer:
         with torch.no_grad():
             M_soft = self._sinkhorn(self.W).cpu().numpy()
             
-        item_indices, shelf_indices = linear_sum_assignment(-M_soft)
+        item_indices, shelf_indices = linear_sum_assignment(M_soft)
         self.cached_layout = {self.id_to_item[i]: self.shelf_coords[s] for i, s in zip(item_indices, shelf_indices)}
 
     def _load_product_image(self, item: str, size: int) -> Image.Image:
