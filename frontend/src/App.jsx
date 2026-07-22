@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { submitProducts } from './api';
 import mapsIds from './maps_ids.json';
 import { PRODUCTS } from './products';
+import { PRODUCT_ICONS } from './productIcons';
 
 function App() {
   const [screen, setScreen] = useState('select'); // 'select' | 'result'
@@ -9,8 +10,7 @@ function App() {
   const [selectedMapId, setSelectedMapId] = useState(mapsIds[0].id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [aisleLengths, setAisleLengths] = useState([]);
-  const [aisles, setAisles] = useState([]);
+  const [mapBase64, setMapBase64] = useState(null);
 
   const toggleProduct = (name) => {
     setSelectedProducts((prev) =>
@@ -27,8 +27,7 @@ function App() {
     try {
       const data = await submitProducts(selectedProducts, selectedMapId);
       if (data.status === 'success') {
-        setAisleLengths(data.aisle_lengths || []);
-        setAisles(data.aisles || []);
+        setMapBase64(data.map_base64);
         setScreen('result');
       } else {
         setError(data.message || 'Submission failed');
@@ -53,28 +52,16 @@ function App() {
             &larr; Back
           </button>
 
-          <div className="aisles-container">
-            {aisleLengths.map((capacity, aisleIndex) => {
-              const aisleProducts = aisles[aisleIndex] || [];
-              return (
-                <div className="aisle" key={aisleIndex}>
-                  <div className="aisle-label">Aisle {aisleIndex + 1}</div>
-                  <div className="aisle-blocks">
-                    {Array.from({ length: capacity }).map((_, slotIndex) => {
-                      const productName = aisleProducts[slotIndex];
-                      return (
-                        <div
-                          key={slotIndex}
-                          className={`aisle-block${productName ? '' : ' empty'}`}
-                        >
-                          {productName || ''}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="map-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+            {mapBase64 ? (
+              <img 
+                src={`data:image/png;base64,${mapBase64}`} 
+                alt="Store Map" 
+                style={{ maxWidth: '100%', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} 
+              />
+            ) : (
+              <p>No map generated</p>
+            )}
           </div>
         </main>
       </div>
@@ -115,14 +102,16 @@ function App() {
       <main className="main-content">
         <form className="product-form" onSubmit={handleSubmit}>
           <div className="product-grid">
-            {PRODUCTS.map((name) => (
+              {PRODUCTS.map((name) => (
               <button
                 type="button"
                 key={name}
                 className={`product-chip${selectedProducts.includes(name) ? ' selected' : ''}`}
                 onClick={() => toggleProduct(name)}
+                title={name}
               >
-                {name}
+                <span className="product-icon">{PRODUCT_ICONS[name]}</span>
+                <span className="product-label">{name}</span>
               </button>
             ))}
           </div>
